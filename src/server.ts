@@ -1,28 +1,56 @@
-import express, { Request, Response } from "express";
+// Import required modules
+import express from "express";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import cors from "cors";
+import authMiddleware from "./middleware/authMiddleware";
+import {
+  registerUser,
+  loginUser,
+  refreshToken,
+} from "./controllers/authController";
+import User from "./models/userModel";
 
-const cors = require("cors");
+dotenv.config();
 
 const app = express();
-
-var corsOptions = {
-  origin: "http://localhost:3000",
-};
-
-app.use(cors(corsOptions));
-
-// parse requests of content-type - application/json
 app.use(express.json());
+app.use(cors({ origin: "http://localhost:3000" }));
 
-// parse requests of content-type - application/x-www-form-urlencoded
-app.use(express.urlencoded({ extended: true }));
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGO_URI as string, { dbName: "todoapp" })
+  .then(() => console.log("MongoDB Connected"))
+  .catch((err) => console.log(err));
 
-// simple route
-app.get("/", (req: Request, res: Response) => {
-  res.json({ message: "Welcome to bezkoder application!" });
+// Auth Routes
+app.post("/register", registerUser);
+app.post("/login", loginUser);
+app.post("/refresh", authMiddleware, refreshToken);
+
+// Protected Route Example
+app.get("/protected", authMiddleware, (req, res) => {
+  res.json({
+    message: "You have accessed a protected route",
+    user: (req as any).user,
+  });
 });
 
-// set port, listen for requests
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}.`);
+// Get User Email by Username (Protected Route)
+app.get("/user-email/:username", authMiddleware, async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json({ email: user.email });
+  } catch (err) {
+    res.status(500).json({ error: "Error retrieving user email" });
+  }
 });
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
