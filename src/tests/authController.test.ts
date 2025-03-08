@@ -53,14 +53,15 @@ describe("Auth Controller Unit Tests", () => {
   });
 
   describe("loginUser", () => {
-    it("should log in an existing user", async () => {
+    it("should log in an existing user and return accessToken and userId", async () => {
+      const userId = new mongoose.Types.ObjectId();
       const req = {
         body: { username: "testuser", password: "password123" },
       } as Request;
       const res = mockResponse();
 
       (User.findOne as jest.Mock).mockResolvedValue({
-        _id: new mongoose.Types.ObjectId(),
+        _id: userId,
         password: "hashedpassword",
       });
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -70,6 +71,7 @@ describe("Auth Controller Unit Tests", () => {
 
       expect(res.json).toHaveBeenCalledWith({
         accessToken: "mockedAccessToken",
+        userId: userId,
       });
     });
   });

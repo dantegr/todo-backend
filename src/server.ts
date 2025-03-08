@@ -9,6 +9,11 @@ import {
   loginUser,
   refreshToken,
 } from "./controllers/authController";
+import {
+  createTodoList,
+  deleteTodoList,
+  getUserTodoLists,
+} from "./controllers/listController";
 import User from "./models/userModel";
 
 dotenv.config();
@@ -27,6 +32,11 @@ mongoose
 app.post("/register", registerUser);
 app.post("/login", loginUser);
 app.post("/refresh", authMiddleware, refreshToken);
+
+// List Routes
+app.post("/createlist", authMiddleware, createTodoList);
+app.delete("/deletelist", authMiddleware, deleteTodoList);
+app.get("/userlists/:userId", authMiddleware, getUserTodoLists);
 
 // Protected Route Example
 app.get("/protected", authMiddleware, (req, res) => {

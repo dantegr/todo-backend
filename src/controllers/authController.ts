@@ -9,7 +9,7 @@ dotenv.config();
 // Generate Access Token
 const generateAccessToken = (userId: string) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET as string, {
-    expiresIn: "5m",
+    expiresIn: "60m",
   });
 };
 
@@ -46,7 +46,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
     const accessToken = generateAccessToken(user._id as string);
 
-    res.json({ accessToken });
+    res.json({ accessToken, userId: user._id });
   } catch (err) {
     res.status(500).json({ error: "Error logging in" });
   }

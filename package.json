@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npx nodemon src/server.ts",
+    "dev": "dotenv -e .env.development npx nodemon src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc",
     "test": "npx jest"
@@ -30,6 +30,7 @@
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "dotenv-cli": "^8.0.0",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.12.1"
