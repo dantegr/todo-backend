@@ -77,7 +77,6 @@ export const getUserTodoLists = async (
   res: Response
 ): Promise<void> => {
   try {
-    console.log(req.params);
     const { userId } = req.params;
 
     if (!userId) {

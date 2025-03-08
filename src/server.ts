@@ -8,6 +8,7 @@ import {
   registerUser,
   loginUser,
   refreshToken,
+  getUserById,
 } from "./controllers/authController";
 import {
   createTodoList,
@@ -32,6 +33,7 @@ mongoose
 app.post("/register", registerUser);
 app.post("/login", loginUser);
 app.post("/refresh", authMiddleware, refreshToken);
+app.get("/getuser/:userId", authMiddleware, getUserById);
 
 // List Routes
 app.post("/createlist", authMiddleware, createTodoList);

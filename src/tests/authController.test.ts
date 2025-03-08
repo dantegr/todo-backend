@@ -6,6 +6,7 @@ import {
   registerUser,
   loginUser,
   refreshToken,
+  getUserById,
 } from "../controllers/authController";
 import User from "../models/userModel";
 import dotenv from "dotenv";
@@ -60,7 +61,7 @@ describe("Auth Controller Unit Tests", () => {
       } as Request;
       const res = mockResponse();
 
-      (User.findOne as jest.Mock).mockResolvedValue({
+      (User.findOne as jest.Mock).mockResolvedValueOnce({
         _id: userId,
         password: "hashedpassword",
       });
@@ -90,6 +91,63 @@ describe("Auth Controller Unit Tests", () => {
       expect(res.json).toHaveBeenCalledWith({
         accessToken: "newMockedAccessToken",
       });
+    });
+  });
+
+  describe("getUserById", () => {
+    it("should return user data when given a valid user ID", async () => {
+      const userId = new mongoose.Types.ObjectId().toString();
+      const req = { params: { userId } } as unknown as Request;
+      const res = mockResponse() as Response;
+
+      const mockUser = {
+        _id: userId,
+        username: "testuser",
+        email: "test@example.com",
+      };
+
+      (User.findById as jest.Mock).mockResolvedValueOnce(mockUser);
+
+      await getUserById(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockUser);
+    });
+
+    it("should return 404 if user is not found", async () => {
+      const req = { params: { userId: "invalidUserId" } } as unknown as Request;
+      const res = mockResponse() as Response;
+
+      (User.findById as jest.Mock).mockResolvedValueOnce(null);
+
+      await getUserById(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: "User not found" });
+    });
+
+    it("should return 400 if userId is not provided", async () => {
+      const req = { params: {} } as Request;
+      const res = mockResponse() as Response;
+
+      await getUserById(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "User ID is required" });
+    });
+
+    it("should return 500 if there is a server error", async () => {
+      const req = { params: { userId: "someUserId" } } as unknown as Request;
+      const res = mockResponse() as Response;
+
+      jest.spyOn(User, "findById").mockImplementationOnce(() => {
+        throw new Error("Database error");
+      });
+
+      await getUserById(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: "Error retrieving user" });
     });
   });
 });
