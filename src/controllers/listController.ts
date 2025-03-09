@@ -105,6 +105,45 @@ export const deleteTodoList = async (
   }
 };
 
+export const updateFreeze = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { listId, userId, frozen } = req.body;
+
+    if (!listId || !userId || typeof frozen !== "boolean") {
+      res
+        .status(400)
+        .json({ error: "List ID, User ID, and frozen status are required" });
+      return;
+    }
+
+    // Find the list
+    const todoList = await TodoList.findById(listId);
+    if (!todoList) {
+      res.status(404).json({ error: "Todo list not found" });
+      return;
+    }
+
+    // Check if the user is the owner
+    if (todoList.ownerId !== userId) {
+      res
+        .status(403)
+        .json({ error: "User is not authorized to update freeze status" });
+      return;
+    }
+
+    // Update the frozen status
+    todoList.frozen = frozen;
+    const updatedList = await todoList.save();
+
+    res.status(200).json(updatedList);
+  } catch (error) {
+    res.status(500).json({ error: "Error updating freeze status" });
+  }
+};
+
 export const getUserTodoLists = async (
   req: Request,
   res: Response

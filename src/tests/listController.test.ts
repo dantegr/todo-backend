@@ -9,7 +9,7 @@ import {
   getUserTodoLists,
   updateTodoList,
   handleListUpdateSocket,
-  resetUserTimer,
+  updateFreeze,
 } from "../controllers/listController";
 
 describe("List Controller Unit Tests", () => {
@@ -75,6 +75,91 @@ describe("List Controller Unit Tests", () => {
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith({
         error: "User is not authorized to delete this list",
+      });
+    });
+  });
+
+  describe("updateFreeze", () => {
+    it("should successfully update the frozen status when the user is the owner", async () => {
+      const req = {
+        body: { listId: "list_123", userId: "owner_123", frozen: true },
+      } as Request;
+      const res = mockResponse() as Response;
+
+      const existingList = {
+        _id: "list_123",
+        ownerId: "owner_123",
+        frozen: false,
+        save: jest
+          .fn()
+          .mockResolvedValueOnce({
+            _id: "list_123",
+            ownerId: "owner_123",
+            frozen: true,
+          }),
+      };
+
+      jest
+        .spyOn(TodoList, "findById")
+        .mockResolvedValueOnce(existingList as any);
+
+      await updateFreeze(req, res);
+
+      expect(existingList.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        _id: "list_123",
+        ownerId: "owner_123",
+        frozen: true,
+      });
+    });
+
+    it("should return an error if the user is not the owner", async () => {
+      const req = {
+        body: { listId: "list_123", userId: "not_owner", frozen: true },
+      } as Request;
+      const res = mockResponse() as Response;
+
+      const existingList = {
+        _id: "list_123",
+        ownerId: "owner_123",
+        frozen: false,
+      };
+      jest
+        .spyOn(TodoList, "findById")
+        .mockResolvedValueOnce(existingList as any);
+
+      await updateFreeze(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "User is not authorized to update freeze status",
+      });
+    });
+
+    it("should return an error if the todo list is not found", async () => {
+      const req = {
+        body: { listId: "nonexistent", userId: "owner_123", frozen: true },
+      } as Request;
+      const res = mockResponse() as Response;
+
+      jest.spyOn(TodoList, "findById").mockResolvedValueOnce(null);
+
+      await updateFreeze(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: "Todo list not found" });
+    });
+
+    it("should return an error if missing required parameters", async () => {
+      const req = { body: { listId: "list_123", frozen: true } } as Request; // Missing userId
+      const res = mockResponse() as Response;
+
+      await updateFreeze(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "List ID, User ID, and frozen status are required",
       });
     });
   });

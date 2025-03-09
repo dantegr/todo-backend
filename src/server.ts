@@ -15,6 +15,7 @@ import {
   deleteTodoList,
   getUserTodoLists,
   handleListUpdateSocket,
+  updateFreeze,
 } from "./controllers/listController";
 import User from "./models/userModel";
 import { createServer } from "http";
@@ -53,6 +54,7 @@ app.get("/getuser/:userId", authMiddleware, getUserById);
 // List Routes
 app.post("/createlist", authMiddleware, createTodoList);
 app.delete("/deletelist", authMiddleware, deleteTodoList);
+app.put("/updatefreeze", authMiddleware, updateFreeze);
 app.get("/userlists/:userId", authMiddleware, getUserTodoLists);
 
 // Protected Route Example
