@@ -14,8 +14,11 @@ import {
   createTodoList,
   deleteTodoList,
   getUserTodoLists,
+  handleListUpdateSocket,
 } from "./controllers/listController";
 import User from "./models/userModel";
+import { createServer } from "http";
+import { Server, Socket } from "socket.io";
 
 dotenv.config();
 
@@ -23,10 +26,22 @@ const app = express();
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:3000" }));
 
+const server = createServer(app);
+const io = new Server(server);
+
+io.on("connection", (socket) => {
+  handleListUpdateSocket(socket, io);
+});
+const PORT = process.env.PORT || 5000;
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI as string, { dbName: "todoapp" })
-  .then(() => console.log("MongoDB Connected"))
+  .then(() => {
+    console.log("MongoDB Connected");
+    server.listen(PORT, () => {
+      console.log(`App listening at http://localhost:${PORT}`);
+    });
+  })
   .catch((err) => console.log(err));
 
 // Auth Routes
@@ -63,6 +78,3 @@ app.get("/user-email/:username", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Error retrieving user email" });
   }
 });
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

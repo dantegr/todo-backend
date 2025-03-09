@@ -1,6 +1,40 @@
 import { Request, Response } from "express";
+import { Server, Socket } from "socket.io";
 import TodoList from "../models/listModel";
 import User from "../models/userModel";
+
+export interface ITodoList {
+  _id: string;
+  title: string;
+  ownerId: string;
+  sharedWith: string[];
+  frozen: boolean;
+  items: Array<{
+    index: number;
+    title: string;
+    done: boolean;
+    cost: number;
+    required: boolean;
+    type?: string;
+    customFields?: Array<{
+      title: string;
+      value: string | number | boolean;
+      required: boolean;
+    }>;
+    subtasks?: any[];
+  }>;
+}
+
+const connectedUsers: Record<string, NodeJS.Timeout> = {};
+
+export const resetUserTimer = (userId: string) => {
+  if (connectedUsers[userId]) {
+    clearTimeout(connectedUsers[userId]);
+  }
+  connectedUsers[userId] = setTimeout(() => {
+    delete connectedUsers[userId];
+  }, 60 * 60 * 1000); // Remove after 1 hour of inactivity
+};
 
 // Create a new TodoList
 export const createTodoList = async (
@@ -89,4 +123,87 @@ export const getUserTodoLists = async (
   } catch (error) {
     res.status(500).json({ error: "Error retrieving todo lists" });
   }
+};
+
+export const updateTodoList = async (
+  id: string,
+  updates: Partial<ITodoList>
+): Promise<ITodoList> => {
+  try {
+    if (!id) {
+      throw new Error("TodoList ID is required");
+    }
+
+    // Find and update the TodoList
+    const updatedList = (await TodoList.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    })) as ITodoList;
+
+    if (!updatedList) {
+      throw new Error("TodoList not found");
+    }
+
+    return updatedList;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error("Error updating todo list: " + error.message);
+    } else {
+      throw new Error("Error updating todo list: Unknown error occurred");
+    }
+  }
+};
+
+export const handleListUpdateSocket = (socket: Socket, io: Server) => {
+  socket.on("join", (userId: string) => {
+    if (userId) {
+      resetUserTimer(userId);
+    }
+  });
+
+  socket.on(
+    "updateList",
+    async ({
+      userId,
+      updatedToDoList,
+    }: {
+      userId: string;
+      updatedToDoList: Partial<ITodoList>;
+    }) => {
+      try {
+        if (!userId || !updatedToDoList._id) {
+          socket.emit("error", "UserId and List ID are required");
+          return;
+        }
+
+        resetUserTimer(userId); // Reset timer on every update
+
+        const updatedList = await updateTodoList(
+          updatedToDoList._id,
+          updatedToDoList
+        );
+
+        if (!updatedList) {
+          socket.emit("error", "Failed to update todo list");
+          return;
+        }
+
+        const recipients = updatedList.sharedWith.filter(
+          (id) => connectedUsers[id]
+        );
+        recipients.forEach((recipient) => {
+          io.to(recipient).emit("listUpdated", updatedList);
+        });
+      } catch (error) {
+        socket.emit("error", "Error updating todo list");
+      }
+    }
+  );
+
+  socket.on("disconnect", (userId: string) => {
+    if (connectedUsers[userId]) {
+      clearTimeout(connectedUsers[userId]);
+      delete connectedUsers[userId];
+    }
+  });
 };

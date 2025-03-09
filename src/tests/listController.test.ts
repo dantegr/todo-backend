@@ -1,11 +1,15 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
+import { Server, Socket } from "socket.io";
 import TodoList from "../models/listModel";
 import User from "../models/userModel";
 import {
   createTodoList,
   deleteTodoList,
   getUserTodoLists,
+  updateTodoList,
+  handleListUpdateSocket,
+  resetUserTimer,
 } from "../controllers/listController";
 
 describe("List Controller Unit Tests", () => {
@@ -89,6 +93,91 @@ describe("List Controller Unit Tests", () => {
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockLists);
+    });
+  });
+
+  describe("updateTodoList", () => {
+    it("should update a todo list successfully", async () => {
+      const listId = "67890";
+      const updates = { title: "Updated Title", frozen: true };
+      const updatedList = { _id: listId, ...updates };
+
+      jest
+        .spyOn(TodoList, "findByIdAndUpdate")
+        .mockResolvedValueOnce(updatedList as any);
+
+      const result = await updateTodoList(listId, updates);
+
+      expect(result).toEqual(updatedList);
+    });
+
+    it("should throw an error if the todo list is not found", async () => {
+      const listId = "67890";
+      const updates = { title: "Updated Title" };
+
+      jest.spyOn(TodoList, "findByIdAndUpdate").mockResolvedValueOnce(null);
+
+      await expect(updateTodoList(listId, updates)).rejects.toThrow(
+        "TodoList not found"
+      );
+    });
+
+    it("should throw an error if no ID is provided", async () => {
+      await expect(updateTodoList("", {})).rejects.toThrow(
+        "TodoList ID is required"
+      );
+    });
+  });
+
+  describe("handleListUpdateSocket", () => {
+    let socket: Partial<Socket>;
+    let io: Partial<Server>;
+    let resetUserTimerSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      socket = {
+        on: jest.fn(),
+        emit: jest.fn(),
+      } as Partial<Socket>;
+      io = {
+        to: jest.fn().mockReturnThis(),
+        emit: jest.fn(),
+      } as Partial<Server>;
+      resetUserTimerSpy = jest.spyOn(
+        require("../controllers/listController"),
+        "resetUserTimer"
+      );
+    });
+
+    it("should add a user to connectedUsers on join", () => {
+      const userId = "user_123";
+      handleListUpdateSocket(socket as Socket, io as Server);
+      (socket.on as jest.Mock).mock.calls.find(
+        ([event, handler]) => event === "join"
+      )[1](userId);
+      expect(resetUserTimerSpy).toHaveBeenCalledWith(userId);
+    });
+
+    it("should update a todo list and emit to shared users", async () => {
+      const userId = "user_123";
+      const listId = "list_456";
+      const updatedToDoList = { _id: listId, title: "Updated Title" };
+      const updatedList = {
+        ...updatedToDoList,
+        sharedWith: [userId, "user_789"],
+      };
+
+      jest
+        .spyOn(TodoList, "findByIdAndUpdate")
+        .mockResolvedValueOnce(updatedList as any);
+
+      handleListUpdateSocket(socket as Socket, io as Server);
+      await (socket.on as jest.Mock).mock.calls.find(
+        ([event, handler]) => event === "updateList"
+      )[1]({ userId, updatedToDoList });
+
+      expect(io.to).toHaveBeenCalledWith(userId);
+      expect(io.emit).toHaveBeenCalledWith("listUpdated", updatedList);
     });
   });
 });
