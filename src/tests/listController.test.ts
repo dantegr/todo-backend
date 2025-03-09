@@ -97,25 +97,40 @@ describe("List Controller Unit Tests", () => {
   });
 
   describe("updateTodoList", () => {
-    it("should update a todo list successfully", async () => {
-      const listId = "67890";
-      const updates = { title: "Updated Title", frozen: true };
+    it("should successfully update a todo list", async () => {
+      const listId = "list_123";
+      const updates = { title: "Updated Title" };
+      const existingList = { _id: listId, frozen: false };
       const updatedList = { _id: listId, ...updates };
 
+      jest
+        .spyOn(TodoList, "findById")
+        .mockResolvedValueOnce(existingList as any);
       jest
         .spyOn(TodoList, "findByIdAndUpdate")
         .mockResolvedValueOnce(updatedList as any);
 
       const result = await updateTodoList(listId, updates);
-
       expect(result).toEqual(updatedList);
     });
 
+    it("should throw an error if the todo list is frozen", async () => {
+      const listId = "list_789";
+      const updates = { title: "Updated Title" };
+      const frozenList = { _id: listId, frozen: true };
+
+      jest.spyOn(TodoList, "findById").mockResolvedValueOnce(frozenList as any);
+
+      await expect(updateTodoList(listId, updates)).rejects.toThrow(
+        "The TodoList is frozen by the owner and cannot be updated"
+      );
+    });
+
     it("should throw an error if the todo list is not found", async () => {
-      const listId = "67890";
+      const listId = "list_123";
       const updates = { title: "Updated Title" };
 
-      jest.spyOn(TodoList, "findByIdAndUpdate").mockResolvedValueOnce(null);
+      jest.spyOn(TodoList, "findById").mockResolvedValueOnce(null);
 
       await expect(updateTodoList(listId, updates)).rejects.toThrow(
         "TodoList not found"
@@ -133,6 +148,7 @@ describe("List Controller Unit Tests", () => {
     let socket: Partial<Socket>;
     let io: Partial<Server>;
     let resetUserTimerSpy: jest.SpyInstance;
+    let updateTodoListSpy: jest.SpyInstance;
 
     beforeEach(() => {
       socket = {
@@ -146,6 +162,10 @@ describe("List Controller Unit Tests", () => {
       resetUserTimerSpy = jest.spyOn(
         require("../controllers/listController"),
         "resetUserTimer"
+      );
+      updateTodoListSpy = jest.spyOn(
+        require("../controllers/listController"),
+        "updateTodoList"
       );
     });
 
@@ -167,15 +187,14 @@ describe("List Controller Unit Tests", () => {
         sharedWith: [userId, "user_789"],
       };
 
-      jest
-        .spyOn(TodoList, "findByIdAndUpdate")
-        .mockResolvedValueOnce(updatedList as any);
+      updateTodoListSpy.mockResolvedValueOnce(updatedList);
 
       handleListUpdateSocket(socket as Socket, io as Server);
       await (socket.on as jest.Mock).mock.calls.find(
         ([event, handler]) => event === "updateList"
       )[1]({ userId, updatedToDoList });
 
+      expect(updateTodoListSpy).toHaveBeenCalledWith(listId, updatedToDoList);
       expect(io.to).toHaveBeenCalledWith(userId);
       expect(io.emit).toHaveBeenCalledWith("listUpdated", updatedList);
     });

@@ -42,8 +42,7 @@ export const createTodoList = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { userId } = req.body; // Extract userId from request body
-
+    const { userId } = req.body;
     if (!userId) {
       res.status(400).json({ error: "UserId is required" });
       return;
@@ -134,14 +133,27 @@ export const updateTodoList = async (
       throw new Error("TodoList ID is required");
     }
 
-    // Find and update the TodoList
+    // Find the TodoList
+    const existingList = await TodoList.findById(id);
+    if (!existingList) {
+      throw new Error("TodoList not found");
+    }
+
+    // Check if the list is frozen
+    if (existingList.frozen) {
+      throw new Error(
+        "The TodoList is frozen by the owner and cannot be updated"
+      );
+    }
+
+    // Update the TodoList
     const updatedList = (await TodoList.findByIdAndUpdate(id, updates, {
       new: true,
       runValidators: true,
     })) as ITodoList;
 
     if (!updatedList) {
-      throw new Error("TodoList not found");
+      throw new Error("TodoList not found after update");
     }
 
     return updatedList;
