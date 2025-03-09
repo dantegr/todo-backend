@@ -16,6 +16,7 @@ import {
   getUserTodoLists,
   handleListUpdateSocket,
   updateFreeze,
+  shareListWith,
 } from "./controllers/listController";
 import User from "./models/userModel";
 import { createServer } from "http";
@@ -56,6 +57,7 @@ app.post("/createlist", authMiddleware, createTodoList);
 app.delete("/deletelist", authMiddleware, deleteTodoList);
 app.put("/updatefreeze", authMiddleware, updateFreeze);
 app.get("/userlists/:userId", authMiddleware, getUserTodoLists);
+app.post("/sharelistwith", authMiddleware, shareListWith);
 
 // Protected Route Example
 app.get("/protected", authMiddleware, (req, res) => {

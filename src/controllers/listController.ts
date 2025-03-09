@@ -25,18 +25,55 @@ export interface ITodoList {
   }>;
 }
 
-const connectedUsers: Record<string, NodeJS.Timeout> = {};
+export interface IUser {
+  _id: string;
+  username: string;
+  email: string;
+  password: string;
+}
 
-export const resetUserTimer = (userId: string) => {
-  if (connectedUsers[userId]) {
-    clearTimeout(connectedUsers[userId]);
+export const shareListWith = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { userEmail, listId } = req.body;
+
+    if (!userEmail || !listId) {
+      res.status(400).json({ error: "UserEmail and ListId are required" });
+      return;
+    }
+
+    // Find the user by email
+    const user: IUser | null = await User.findOne({ email: userEmail });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Find the todo list
+    const todoList = await TodoList.findById(listId);
+    if (!todoList) {
+      res.status(404).json({ error: "Todo list not found" });
+      return;
+    }
+
+    // Check if the user is already shared
+    if (todoList.sharedWith.includes(user._id.toString())) {
+      res.status(400).json({ error: "User is already shared with this list" });
+      return;
+    }
+
+    // Add userId to sharedWith array
+    todoList.sharedWith.push(user._id.toString());
+    const updatedList = await todoList.save();
+
+    res.status(200).json(updatedList);
+  } catch (error) {
+    res.status(500).json({ error: "Error sharing todo list" });
   }
-  connectedUsers[userId] = setTimeout(() => {
-    delete connectedUsers[userId];
-  }, 60 * 60 * 1000); // Remove after 1 hour of inactivity
 };
 
-// Create a new TodoList
 export const createTodoList = async (
   req: Request,
   res: Response
@@ -83,14 +120,12 @@ export const deleteTodoList = async (
       return;
     }
 
-    // Find the list
     const todoList = await TodoList.findById(listId);
     if (!todoList) {
       res.status(404).json({ error: "Todo list not found" });
       return;
     }
 
-    // Check if the user is the owner
     if (todoList.ownerId !== userId) {
       res
         .status(403)
@@ -119,14 +154,12 @@ export const updateFreeze = async (
       return;
     }
 
-    // Find the list
     const todoList = await TodoList.findById(listId);
     if (!todoList) {
       res.status(404).json({ error: "Todo list not found" });
       return;
     }
 
-    // Check if the user is the owner
     if (todoList.ownerId !== userId) {
       res
         .status(403)
@@ -134,7 +167,6 @@ export const updateFreeze = async (
       return;
     }
 
-    // Update the frozen status
     todoList.frozen = frozen;
     const updatedList = await todoList.save();
 
@@ -172,20 +204,17 @@ export const updateTodoList = async (
       throw new Error("TodoList ID is required");
     }
 
-    // Find the TodoList
     const existingList = await TodoList.findById(id);
     if (!existingList) {
       throw new Error("TodoList not found");
     }
 
-    // Check if the list is frozen
     if (existingList.frozen) {
       throw new Error(
         "The TodoList is frozen by the owner and cannot be updated"
       );
     }
 
-    // Update the TodoList
     const updatedList = (await TodoList.findByIdAndUpdate(id, updates, {
       new: true,
       runValidators: true,
@@ -206,12 +235,6 @@ export const updateTodoList = async (
 };
 
 export const handleListUpdateSocket = (socket: Socket, io: Server) => {
-  socket.on("join", (userId: string) => {
-    if (userId) {
-      resetUserTimer(userId);
-    }
-  });
-
   socket.on(
     "updateList",
     async ({
@@ -227,34 +250,23 @@ export const handleListUpdateSocket = (socket: Socket, io: Server) => {
           return;
         }
 
-        resetUserTimer(userId); // Reset timer on every update
-
         const updatedList = await updateTodoList(
           updatedToDoList._id,
           updatedToDoList
         );
-
         if (!updatedList) {
           socket.emit("error", "Failed to update todo list");
           return;
         }
 
-        const recipients = updatedList.sharedWith.filter(
-          (id) => connectedUsers[id]
-        );
-        recipients.forEach((recipient) => {
-          io.to(recipient).emit("listUpdated", updatedList);
-        });
+        io.emit("listUpdated", updatedList);
       } catch (error) {
         socket.emit("error", "Error updating todo list");
       }
     }
   );
 
-  socket.on("disconnect", (userId: string) => {
-    if (connectedUsers[userId]) {
-      clearTimeout(connectedUsers[userId]);
-      delete connectedUsers[userId];
-    }
+  socket.on("disconnect", () => {
+    socket.emit("disconnected");
   });
 };
