@@ -9,6 +9,7 @@ export interface ITodoList {
   ownerId: string;
   sharedWith: string[];
   frozen: boolean;
+  completed: boolean;
   items: Array<{
     index: number;
     title: string;
@@ -97,6 +98,7 @@ export const createTodoList = async (
       ownerId: userId,
       sharedWith: [userId], // Include user in sharedWith
       frozen: false,
+      completed: false,
       items: [], // No items initially
     });
 

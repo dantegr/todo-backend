@@ -64,6 +64,7 @@ interface ITodoList extends Document {
   sharedWith: string[]; // Array of user IDs (strings) who have access
   frozen: boolean;
   items: IItem[];
+  completed: boolean;
 }
 
 const TodoListSchema = new mongoose.Schema<ITodoList>(
@@ -72,6 +73,7 @@ const TodoListSchema = new mongoose.Schema<ITodoList>(
     ownerId: { type: String, required: true }, // Owner as a string ID
     sharedWith: [{ type: String }], // List of user IDs (strings) who have access
     frozen: { type: Boolean, default: false }, // Freeze/unfreeze list
+    completed: { type: Boolean, default: false },
     items: [ItemSchema], // List of items
   },
   { timestamps: true } // Automatically adds createdAt & updatedAt
