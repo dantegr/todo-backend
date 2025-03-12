@@ -11,7 +11,7 @@ export interface ITodoList {
   frozen: boolean;
   completed: boolean;
   items: Array<{
-    index: number;
+    id: string;
     title: string;
     done: boolean;
     cost: number;

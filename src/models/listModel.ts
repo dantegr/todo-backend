@@ -36,7 +36,7 @@ const SubtaskSchema = new mongoose.Schema<ISubtask>({
 
 // Define Item Interface & Schema (Includes subtasks)
 interface IItem {
-  index: number;
+  id: string;
   title: string;
   done: boolean;
   cost: number;
@@ -47,7 +47,7 @@ interface IItem {
 }
 
 const ItemSchema = new mongoose.Schema<IItem>({
-  index: { type: Number, required: true },
+  id: { type: String, required: true },
   title: { type: String, required: true },
   done: { type: Boolean, default: false },
   cost: { type: Number, required: true, default: 0 },
