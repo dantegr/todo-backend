@@ -80,9 +80,14 @@ export const createTodoList = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { userId } = req.body;
+    const { userId, listTitle } = req.body;
     if (!userId) {
       res.status(400).json({ error: "UserId is required" });
+      return;
+    }
+
+    if (!listTitle) {
+      res.status(400).json({ error: "List Title is required" });
       return;
     }
 
@@ -94,7 +99,7 @@ export const createTodoList = async (
     }
 
     const newList = new TodoList({
-      title: "New Todo List",
+      title: listTitle,
       ownerId: userId,
       sharedWith: [userId], // Include user in sharedWith
       frozen: false,

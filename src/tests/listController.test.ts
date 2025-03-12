@@ -129,7 +129,7 @@ describe("List Controller Unit Tests", () => {
 
   describe("createTodoList", () => {
     it("should create a new todo list", async () => {
-      const req = { body: { userId: "12345" } } as Request;
+      const req = { body: { userId: "12345", listTitle: "test" } } as Request;
       const res = mockResponse() as Response;
 
       jest
