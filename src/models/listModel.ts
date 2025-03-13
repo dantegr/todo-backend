@@ -13,6 +13,7 @@ const CustomFieldSchema = new mongoose.Schema<ICustomField>({
 
 // Define Subtask Interface & Schema (Supports infinite nesting)
 interface ISubtask {
+  id: string;
   title: string;
   done: boolean;
   required: boolean;
@@ -20,6 +21,7 @@ interface ISubtask {
 }
 
 const SubtaskSchema = new mongoose.Schema<ISubtask>({
+  id: { type: String, required: true },
   title: { type: String, required: true },
   done: { type: Boolean, default: false },
   required: { type: Boolean, default: false },
