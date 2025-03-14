@@ -26,7 +26,7 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(cors({ origin: "*" }));
 
 const server = createServer(app);
 const io = new Server(server);
