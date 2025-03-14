@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "dotenv -e .env.development npx nodemon src/server.ts",
     "start": "node dist/server.js",
-    "build": "tsc",
+    "build": "npm install && tsc",
     "test": "npx jest"
   },
   "keywords": [],
