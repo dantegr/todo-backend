@@ -34,7 +34,7 @@ const io = new Server(server);
 io.on("connection", (socket) => {
   handleListUpdateSocket(socket, io);
 });
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI as string, { dbName: "todoapp" })
